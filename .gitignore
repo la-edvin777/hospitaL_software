@@ -1,0 +1,8 @@
+.vscode
+.idea
+utFile
+docs/*
+docs
+.git-credentials
+.git-credentials.swp
+
