@@ -19,9 +19,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 import javax.swing.JComponent;
-import javax.swing.JFormattedTextField;
 import javax.swing.JTextField;
-import javax.swing.text.MaskFormatter;
 
 public class FieldMetadata {
     private final Class<?> type;
@@ -30,6 +28,7 @@ public class FieldMetadata {
     private final String foreignKeyColumn;
     private final String displayColumn;
     private final boolean isRequired;
+    private final int maxLength;
     
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.UK);
     
@@ -83,6 +82,28 @@ public class FieldMetadata {
         this.foreignKeyColumn = foreignKeyColumn;
         this.displayColumn = displayColumn;
         this.isRequired = isPrimaryKey;
+        this.maxLength = 0; // Default no limit
+    }
+    
+    /**
+     * Creates a new field metadata instance with all parameters including max length.
+     * 
+     * @param type The Java type of the field
+     * @param isPrimaryKey Whether the field is a primary key
+     * @param foreignKeyTable The name of the referenced table
+     * @param foreignKeyColumn The primary key field in the referenced table
+     * @param displayColumn The field to display in dropdowns/selections
+     * @param isRequired Whether the field is required
+     * @param maxLength Maximum length for the field (0 for no limit)
+     */
+    public FieldMetadata(Class<?> type, boolean isPrimaryKey, String foreignKeyTable, String foreignKeyColumn, String displayColumn, boolean isRequired, int maxLength) {
+        this.type = type;
+        this.isPrimaryKey = isPrimaryKey;
+        this.foreignKeyTable = foreignKeyTable;
+        this.foreignKeyColumn = foreignKeyColumn;
+        this.displayColumn = displayColumn;
+        this.isRequired = isRequired;
+        this.maxLength = maxLength;
     }
     
     /**
@@ -142,6 +163,14 @@ public class FieldMetadata {
     }
     
     /**
+     * Gets the maximum length for the field.
+     * @return The maximum length (0 for no limit)
+     */
+    public int getMaxLength() {
+        return maxLength;
+    }
+    
+    /**
      * Generates a unique ID for auto-generated fields.
      * Uses table-specific patterns for ID generation.
      * 
@@ -151,19 +180,21 @@ public class FieldMetadata {
     public String generateId(String tableName) {
         switch (tableName.toLowerCase()) {
             case "doctor":
-                return "DR" + UUID.randomUUID().toString().substring(0, 6);
+                return "DR" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
             case "patient":
-                return "PT" + UUID.randomUUID().toString().substring(0, 6);
+                return "PT" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
             case "visit":
-                return "VT" + UUID.randomUUID().toString().substring(0, 6);
+                return "VT" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
             case "prescription":
                 return String.format("%010d", (long)(Math.random() * 10000000000L));
             case "doctorspecialty":
-                return "DS" + UUID.randomUUID().toString().substring(0, 6);
+                return "DS" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
             case "patientinsurance":
-                return "PI" + UUID.randomUUID().toString().substring(0, 6);
+                return "PI" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+            case "insurance":
+                return "IN" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
             default:
-                return UUID.randomUUID().toString().substring(0, 8);
+                return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         }
     }
     
@@ -184,7 +215,7 @@ public class FieldMetadata {
         
         // Handle special cases where displayColumn contains a function
         if (displayColumn.toUpperCase().startsWith("CONCAT(")) {
-            sql = String.format("SELECT %s, %s AS display_name FROM %s", 
+            sql = String.format("SELECT %s, %s AS display_name FROM %s ORDER BY display_name", 
                 foreignKeyColumn, displayColumn, foreignKeyTable);
             
             try (PreparedStatement stmt = conn.prepareStatement(sql);
@@ -196,10 +227,25 @@ public class FieldMetadata {
                     ));
                 }
             }
+        } else if (displayColumn.contains("||")) {
+            // Handle Oracle-style concatenation
+            String modifiedDisplayColumn = displayColumn.replace("||", ", ");
+            sql = String.format("SELECT %s, CONCAT(%s) AS display_name FROM %s ORDER BY display_name", 
+                foreignKeyColumn, modifiedDisplayColumn.replace("'", "").replace(" ", ""), foreignKeyTable);
+                
+            try (PreparedStatement stmt = conn.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    items.add(new ComboBoxItem(
+                        rs.getString(foreignKeyColumn),
+                        rs.getString("display_name")
+                    ));
+                }
+            }
         } else {
             // Handle regular columns
-            sql = String.format("SELECT %s, %s FROM %s", 
-                foreignKeyColumn, displayColumn, foreignKeyTable);
+            sql = String.format("SELECT %s, %s FROM %s ORDER BY %s", 
+                foreignKeyColumn, displayColumn, foreignKeyTable, displayColumn);
                 
             try (PreparedStatement stmt = conn.prepareStatement(sql);
                  ResultSet rs = stmt.executeQuery()) {
@@ -215,38 +261,113 @@ public class FieldMetadata {
         return items;
     }
 
+    /**
+     * Creates an appropriate input component for this field type.
+     * 
+     * @return A JComponent suitable for inputting this field's data
+     */
     public JComponent createInputComponent() {
-        if (type == Date.class) {
-            try {
-                MaskFormatter formatter = new MaskFormatter("####-##-##");
-                formatter.setPlaceholderCharacter('_');
-                JFormattedTextField dateField = new JFormattedTextField(formatter);
-                dateField.setToolTipText("Enter date in YYYY-MM-DD format");
-                return dateField;
-            } catch (ParseException e) {
-                e.printStackTrace();
-                return new JTextField(); // Fallback to regular text field
-            }
+        if (type == Date.class || type == java.sql.Date.class) {
+            return new DatePicker();
         }
         return new JTextField();
     }
 
+    /**
+     * Gets the value from a component, with proper type conversion.
+     * 
+     * @param component The input component
+     * @return The string representation of the value
+     */
     public String getValueFromComponent(JComponent component) {
-        if (type == Date.class && component instanceof JFormattedTextField) {
-            String text = ((JFormattedTextField) component).getText();
-            if (text != null && text.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                return text;
+        if (type == Date.class || type == java.sql.Date.class) {
+            if (component instanceof DatePicker) {
+                return ((DatePicker) component).getDateString();
             }
-            return null;
         } else if (component instanceof JTextField) {
-            return ((JTextField) component).getText();
+            String text = ((JTextField) component).getText();
+            return text != null && !text.trim().isEmpty() ? text.trim() : null;
         }
         return null;
     }
 
+    /**
+     * Sets a value in a component with proper formatting.
+     * 
+     * @param component The input component
+     * @param value The value to set
+     */
     public void setValueInComponent(JComponent component, String value) {
-        if (component instanceof JTextField) {
-            ((JTextField) component).setText(value);
+        if (type == Date.class || type == java.sql.Date.class) {
+            if (component instanceof DatePicker) {
+                ((DatePicker) component).setDateString(value);
+            }
+        } else if (component instanceof JTextField) {
+            ((JTextField) component).setText(value != null ? value : "");
         }
     }
-} 
+    
+    /**
+     * Validates a field value according to its type and constraints.
+     * 
+     * @param value The value to validate
+     * @return A validation result with success status and error message
+     */
+    public ValidationResult validateValue(String value) {
+        // Check required fields
+        if (isRequired && (value == null || value.trim().isEmpty())) {
+            return new ValidationResult(false, "This field is required");
+        }
+        
+        // Allow empty non-required fields
+        if (value == null || value.trim().isEmpty()) {
+            return new ValidationResult(true, null);
+        }
+        
+        value = value.trim();
+        
+        // Check max length
+        if (maxLength > 0 && value.length() > maxLength) {
+            return new ValidationResult(false, "Value too long (max " + maxLength + " characters)");
+        }
+        
+        // Type-specific validation
+        if (type == Date.class || type == java.sql.Date.class) {
+            try {
+                DATE_FORMAT.setLenient(false);
+                DATE_FORMAT.parse(value);
+                return new ValidationResult(true, null);
+            } catch (ParseException e) {
+                return new ValidationResult(false, "Invalid date format (use YYYY-MM-DD)");
+            }
+        } else if (type == Integer.class || type == int.class) {
+            try {
+                int intValue = Integer.parseInt(value);
+                if (intValue < 0) {
+                    return new ValidationResult(false, "Value must be positive");
+                }
+                return new ValidationResult(true, null);
+            } catch (NumberFormatException e) {
+                return new ValidationResult(false, "Must be a valid number");
+            }
+        }
+        
+        return new ValidationResult(true, null);
+    }
+    
+    /**
+     * Inner class for validation results.
+     */
+    public static class ValidationResult {
+        private final boolean valid;
+        private final String errorMessage;
+        
+        public ValidationResult(boolean valid, String errorMessage) {
+            this.valid = valid;
+            this.errorMessage = errorMessage;
+        }
+        
+        public boolean isValid() { return valid; }
+        public String getErrorMessage() { return errorMessage; }
+    }
+}
