@@ -268,7 +268,7 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
             case "doctor":
                 return new String[]{"doctorid", "firstname", "surname", "specialization", "address", "email"};
             case "patient":
-                return new String[]{"patientid", "firstname", "surname", "phone", "email", "address", "postcode", "insuranceid"};
+                return new String[]{"patientid", "firstname", "surname", "phone", "email", "address", "postcode", "insuranceid", "maindoctorname"};
             case "visit":
                 return new String[]{"visitid", "patientName", "doctorName", "dateofvisit", "symptoms", "diagnosis"};
             case "prescription":
@@ -507,7 +507,7 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
      * Check if a field is input-only (not displayed in forms)
      */
     private boolean isInputOnlyField(String fieldName) {
-        return fieldName.equals("patientName") || fieldName.equals("doctorName");
+        return fieldName.equals("patientName") || fieldName.equals("doctorName") || fieldName.equals("maindoctorname");
     }
 
     /**

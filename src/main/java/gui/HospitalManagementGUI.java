@@ -136,6 +136,8 @@ public class HospitalManagementGUI extends JFrame {
         fields.put("address", new FieldMetadata(String.class, false, null, null, null, true, 200));
         fields.put("postcode", new FieldMetadata(String.class, false, null, null, null, true, 10));
         fields.put("insuranceid", new FieldMetadata(String.class, "insurance", "insuranceid", "company"));
+        fields.put("maindoctorid", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("maindoctorname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
         
         DatabaseTablePanel<Patient> panel = new DatabaseTablePanel<>(
             connection,

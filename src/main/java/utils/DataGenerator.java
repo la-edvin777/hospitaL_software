@@ -1,6 +1,10 @@
 package utils;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Random;
 import java.util.UUID;
@@ -55,6 +59,10 @@ public class DataGenerator {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
+    private static String generatePhoneNumber() {
+        return String.format("+44%d", 7000000000L + random.nextInt(999999999));
+    }
+
     private static void generateDoctors(Connection conn) throws SQLException {
         String sql = "INSERT INTO doctor (doctorid, firstname, surname, address, email, specialization) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -73,19 +81,30 @@ public class DataGenerator {
     }
 
     private static void generatePatients(Connection conn) throws SQLException {
-        String sql = "INSERT INTO patient (patientid, firstname, surname, postcode, address, phone, email, insuranceid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        // First get some doctor IDs for main doctor assignment
+        String[] doctorIds = new String[10];
+        try (ResultSet rs = conn.createStatement().executeQuery("SELECT doctorid FROM doctor LIMIT 10")) {
+            int i = 0;
+            while (rs.next() && i < 10) {
+                doctorIds[i++] = rs.getString("doctorid");
+            }
+        }
+        
+        String sql = "INSERT INTO patient (patientid, firstname, surname, postcode, address, phone, email, insuranceid, maindoctorid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < 20; i++) {
-                String firstName = FIRST_NAMES[random.nextInt(FIRST_NAMES.length)];
-                String lastName = LAST_NAMES[random.nextInt(LAST_NAMES.length)];
+                String firstName = FIRST_NAMES[i % FIRST_NAMES.length];
+                String lastName = LAST_NAMES[i % LAST_NAMES.length];
                 stmt.setString(1, generateId());
                 stmt.setString(2, firstName);
                 stmt.setString(3, lastName);
                 stmt.setString(4, POSTCODES[random.nextInt(POSTCODES.length)]);
                 stmt.setString(5, ADDRESSES[random.nextInt(ADDRESSES.length)]);
-                stmt.setString(6, String.format("+44%d", 7000000000L + random.nextInt(999999999)));
+                stmt.setString(6, generatePhoneNumber());
                 stmt.setString(7, firstName.toLowerCase() + "." + lastName.toLowerCase() + "@email.com");
-                stmt.setString(8, null); // Will be updated when generating insurance
+                stmt.setString(8, null); // Insurance will be set later
+                // Assign a random main doctor (80% chance of having one)
+                stmt.setString(9, random.nextDouble() < 0.8 ? doctorIds[random.nextInt(doctorIds.length)] : null);
                 stmt.executeUpdate();
             }
         }

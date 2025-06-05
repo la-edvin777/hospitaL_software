@@ -99,7 +99,11 @@ public class DatabaseInitializer {
                     "address VARCHAR(200) NOT NULL," +
                     "phone VARCHAR(20) NOT NULL," +
                     "email VARCHAR(100) NOT NULL," +
-                    "insuranceid VARCHAR(8)" +
+                    "insuranceid VARCHAR(8)," +
+                    "maindoctorid VARCHAR(8)," +
+                    "FOREIGN KEY (maindoctorid) REFERENCES doctor(doctorid)" +
+                    " ON DELETE SET NULL" +
+                    " ON UPDATE CASCADE" +
                     ")");
 
             // Create Visit table - Records patient visits to doctors
