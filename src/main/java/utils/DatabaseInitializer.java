@@ -24,6 +24,19 @@ public class DatabaseInitializer {
     }
 
     /**
+     * Initializes the database by dropping existing tables and creating new tables,
+     * but does NOT populate them with sample data. This is useful when you want
+     * to load data from CSV files or other sources.
+     * 
+     * @param conn The database connection
+     * @throws SQLException if there's an error during initialization
+     */
+    public static void initializeDatabaseWithoutData(Connection conn) throws SQLException {
+        dropTables(conn);
+        createTables(conn);
+    }
+
+    /**
      * Drops all existing tables in the correct order to handle dependencies.
      * Tables are dropped in reverse order of their dependencies to avoid
      * foreign key constraint violations.

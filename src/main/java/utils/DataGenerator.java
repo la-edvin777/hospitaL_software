@@ -104,6 +104,7 @@ public class DataGenerator {
                 stmt.setString(7, firstName.toLowerCase() + "." + lastName.toLowerCase() + "@email.com");
                 stmt.setString(8, null); // Insurance will be set later
                 // Assign a random main doctor (80% chance of having one)
+                // Note: CSV patients will have their main doctors assigned based on visit patterns
                 stmt.setString(9, random.nextDouble() < 0.8 ? doctorIds[random.nextInt(doctorIds.length)] : null);
                 stmt.executeUpdate();
             }

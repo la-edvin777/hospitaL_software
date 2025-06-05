@@ -38,8 +38,8 @@ public class HospitalManagementGUI extends JFrame {
             // Get connection (this will create the database if it doesn't exist)
             connection = DatabaseConfig.getConnection();
             
-            // Initialize database schema
-            DatabaseInitializer.initializeDatabase(connection);
+            // Initialize database schema without sample data (we'll load CSV data instead)
+            DatabaseInitializer.initializeDatabaseWithoutData(connection);
             
             // Initialize CSV loader
             csvLoader = new CSVLoader(connection);

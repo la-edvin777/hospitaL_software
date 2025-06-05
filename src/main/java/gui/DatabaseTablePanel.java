@@ -229,10 +229,10 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
         // Define column order based on table name
         String[] columnOrder = getColumnOrder();
 
-        // Add columns in the specified order
+        // Add columns in the specified order with friendly names
         for (String fieldName : columnOrder) {
             if (fields.containsKey(fieldName)) {
-                tableModel.addColumn(fieldName);
+                tableModel.addColumn(getFriendlyColumnName(fieldName));
             }
         }
 
@@ -260,6 +260,54 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
         // Set default sorting based on table
         if (tableModel.getRowCount() > 0) {
             setDefaultSorting();
+        }
+    }
+
+    /**
+     * Convert database field names to user-friendly display names
+     */
+    private String getFriendlyColumnName(String fieldName) {
+        switch (fieldName.toLowerCase()) {
+            // Common fields
+            case "doctorid": return "Doctor ID";
+            case "patientid": return "Patient ID";
+            case "visitid": return "Visit ID";
+            case "prescriptionid": return "Prescription ID";
+            case "insuranceid": return "Insurance ID";
+            case "firstname": return "First Name";
+            case "surname": return "Surname";
+            case "email": return "Email";
+            case "address": return "Address";
+            case "phone": return "Phone";
+            case "postcode": return "Post Code";
+            case "specialization": return "Specialization";
+            case "company": return "Company";
+            
+            // Date fields
+            case "dateofvisit": return "Date of Visit";
+            case "dateprescribed": return "Date Prescribed";
+            case "startdate": return "Start Date";
+            case "enddate": return "End Date";
+            
+            // Medical fields
+            case "symptoms": return "Symptoms";
+            case "diagnosis": return "Diagnosis";
+            case "dosage": return "Dosage";
+            case "duration": return "Duration";
+            case "comment": return "Comment";
+            case "drugid": return "Drug ID";
+            case "specialty": return "Specialty";
+            case "experience": return "Experience (Years)";
+            
+            // Display names
+            case "patientname": return "Patient Name";
+            case "doctorname": return "Doctor Name";
+            case "maindoctorname": return "Main Doctor";
+            
+            // Default: capitalize first letter and add spaces before uppercase letters
+            default:
+                return fieldName.substring(0, 1).toUpperCase() + 
+                       fieldName.substring(1).replaceAll("([A-Z])", " $1");
         }
     }
 
@@ -344,7 +392,7 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
             // Skip display-only fields (like patientName, doctorName) from input forms
             if (isInputOnlyField(fieldName)) continue;
             
-            JLabel label = new JLabel(fieldName + (metadata.isRequired() ? " *" : "") + ":");
+            JLabel label = new JLabel(getFriendlyColumnName(fieldName) + (metadata.isRequired() ? " *" : "") + ":");
             JComponent input;
             
             // Check if this is an auto-generated ID field
@@ -353,7 +401,7 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
             if (metadata.hasRelation()) {
                 // Create combobox for foreign key fields
                 JComboBox<ComboBoxItem> comboBox = new JComboBox<>();
-                comboBox.addItem(new ComboBoxItem("", "-- Select " + fieldName + " --"));
+                comboBox.addItem(new ComboBoxItem("", "-- Select " + getFriendlyColumnName(fieldName) + " --"));
                 loadForeignKeyItems(comboBox, metadata);
                 input = comboBox;
                 
@@ -431,7 +479,7 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
                     FieldMetadata.ValidationResult validation = metadata.validateValue(value);
                     if (!validation.isValid()) {
                         if (validationErrors.length() > 0) validationErrors.append("\n");
-                        validationErrors.append(fieldName).append(": ").append(validation.getErrorMessage());
+                        validationErrors.append(getFriendlyColumnName(fieldName)).append(": ").append(validation.getErrorMessage());
                         continue;
                     }
                     
@@ -441,7 +489,7 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
                             setFieldValue(entityToSave, fieldName, value, metadata.getType());
                         } catch (Exception ex) {
                             if (validationErrors.length() > 0) validationErrors.append("\n");
-                            validationErrors.append(fieldName).append(": Invalid value format");
+                            validationErrors.append(getFriendlyColumnName(fieldName)).append(": Invalid value format");
                         }
                     }
                 }
