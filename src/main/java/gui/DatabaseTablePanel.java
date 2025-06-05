@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -316,15 +318,15 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
             case "doctor":
                 return new String[]{"doctorid", "firstname", "surname", "specialization", "address", "email"};
             case "patient":
-                return new String[]{"patientid", "firstname", "surname", "phone", "email", "address", "postcode", "insuranceid", "maindoctorname"};
+                return new String[]{"patientid", "firstname", "surname", "phone", "email", "address", "postcode", "insurancecompany", "maindoctorname"};
             case "visit":
                 return new String[]{"visitid", "patientName", "doctorName", "dateofvisit", "symptoms", "diagnosis"};
             case "prescription":
-                return new String[]{"prescriptionid", "patientid", "doctorid", "drugid", "dateprescribed", "dosage", "duration", "comment"};
+                return new String[]{"prescriptionid", "patientname", "doctorname", "drugname", "dateprescribed", "dosage", "duration", "comment"};
             case "doctorspecialty":
-                return new String[]{"doctorid", "specialty", "experience"};
+                return new String[]{"doctorname", "specialty", "experience"};
             case "patientinsurance":
-                return new String[]{"insuranceid", "patientid", "startdate", "enddate"};
+                return new String[]{"insurancecompany", "patientname", "startdate", "enddate"};
             case "insurance":
                 return new String[]{"insuranceid", "company", "address", "phone"};
             default:
@@ -555,7 +557,9 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
      * Check if a field is input-only (not displayed in forms)
      */
     private boolean isInputOnlyField(String fieldName) {
-        return fieldName.equals("patientName") || fieldName.equals("doctorName") || fieldName.equals("maindoctorname");
+        return fieldName.equals("patientName") || fieldName.equals("doctorName") || fieldName.equals("maindoctorname") || 
+               fieldName.equals("patientname") || fieldName.equals("doctorname") || fieldName.equals("drugname") ||
+               fieldName.equals("insurancecompany");
     }
 
     /**
@@ -635,11 +639,119 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
      */
     private Object getFieldValue(T entity, String fieldName) {
         try {
+            // Handle special display-only fields that don't exist as getters
+            if (isDisplayOnlyField(fieldName)) {
+                return getDisplayValue(entity, fieldName);
+            }
+            
             String getterName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
             Method getter = entity.getClass().getMethod(getterName);
             return getter.invoke(entity);
         } catch (Exception e) {
             return null;
+        }
+    }
+    
+    /**
+     * Check if a field is display-only (calculated from related data)
+     */
+    private boolean isDisplayOnlyField(String fieldName) {
+        return fieldName.equals("doctorname") || fieldName.equals("patientname") || 
+               fieldName.equals("drugname") || fieldName.equals("insurancecompany") ||
+               fieldName.equals("patientName") || fieldName.equals("doctorName") || 
+               fieldName.equals("maindoctorname");
+    }
+    
+    /**
+     * Get display value for display-only fields by looking up related data
+     */
+    private Object getDisplayValue(T entity, String fieldName) {
+        try {
+            switch (fieldName.toLowerCase()) {
+                case "doctorname":
+                    return getRelatedDisplayValue(entity, "doctorid", "doctor", "CONCAT(firstname, ' ', surname)");
+                case "patientname":
+                    return getRelatedDisplayValue(entity, "patientid", "patient", "CONCAT(firstname, ' ', surname)");
+                case "drugname":
+                    return getRelatedDisplayValue(entity, "drugid", "drug", "name");
+                case "insurancecompany":
+                    return getRelatedDisplayValue(entity, "insuranceid", "insurance", "company");
+                case "maindoctorname":
+                    return getRelatedDisplayValue(entity, "maindoctorid", "doctor", "CONCAT(firstname, ' ', surname)");
+                default:
+                    return null;
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get related display value by querying the referenced table
+     */
+    private String getRelatedDisplayValue(T entity, String foreignKeyField, String relatedTable, String displayColumn) {
+        try {
+            // Get the foreign key value from the entity using direct reflection (avoid recursion)
+            Object foreignKeyValue = getFieldValueDirect(entity, foreignKeyField);
+            if (foreignKeyValue == null) {
+                return null;
+            }
+            
+            // Query the related table for the display value
+            String sql;
+            if (displayColumn.toUpperCase().startsWith("CONCAT(")) {
+                sql = String.format("SELECT %s AS display_name FROM %s WHERE %s = ?", 
+                    displayColumn, relatedTable, getPrimaryKeyField(relatedTable));
+            } else {
+                sql = String.format("SELECT %s AS display_name FROM %s WHERE %s = ?", 
+                    displayColumn, relatedTable, getPrimaryKeyField(relatedTable));
+            }
+            
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                stmt.setString(1, foreignKeyValue.toString());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getString("display_name");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            // Return the ID if we can't get the display value
+            try {
+                Object foreignKeyValue = getFieldValueDirect(entity, foreignKeyField);
+                return foreignKeyValue != null ? foreignKeyValue.toString() : null;
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Get field value using direct reflection (without display field handling)
+     */
+    private Object getFieldValueDirect(T entity, String fieldName) {
+        try {
+            String getterName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+            Method getter = entity.getClass().getMethod(getterName);
+            return getter.invoke(entity);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get the primary key field name for a table
+     */
+    private String getPrimaryKeyField(String tableName) {
+        switch (tableName.toLowerCase()) {
+            case "doctor": return "doctorid";
+            case "patient": return "patientid";
+            case "drug": return "drugid";
+            case "insurance": return "insuranceid";
+            case "visit": return "visitid";
+            case "prescription": return "prescriptionid";
+            default: return "id";
         }
     }
 

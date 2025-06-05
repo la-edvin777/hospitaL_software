@@ -37,8 +37,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
 /**
- * A custom date picker component for the Hospital Management System.
- * Provides an intuitive calendar interface for date selection.
+ * Date picker with calendar interface.
  */
 public class DatePicker extends JPanel {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.UK);

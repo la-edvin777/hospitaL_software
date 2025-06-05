@@ -1,8 +1,5 @@
 /**
- * Represents metadata for database fields in the Hospital Management System.
- * This class manages field properties such as type, auto-generation, and relationships
- * between different database tables. It's used primarily for GUI form generation
- * and data validation.
+ * Field metadata for database columns.
  */
 package gui;
 
@@ -171,11 +168,10 @@ public class FieldMetadata {
     }
     
     /**
-     * Generates a unique ID for auto-generated fields.
-     * Uses table-specific patterns for ID generation.
+     * Generate ID for table.
      * 
-     * @param tableName The name of the table for which to generate an ID
-     * @return A new unique identifier string
+     * @param tableName Table name
+     * @return Unique ID
      */
     public String generateId(String tableName) {
         switch (tableName.toLowerCase()) {
@@ -199,11 +195,11 @@ public class FieldMetadata {
     }
     
     /**
-     * Retrieves related items from the database for populating dropdowns and selections.
+     * Get related items for dropdowns.
      * 
-     * @param conn The database connection
-     * @return List of ComboBoxItem objects containing key-value pairs
-     * @throws SQLException if a database access error occurs
+     * @param conn Database connection
+     * @return List of items
+     * @throws SQLException if database error
      */
     public List<ComboBoxItem> getRelatedItems(Connection conn) throws SQLException {
         if (!hasRelation()) {

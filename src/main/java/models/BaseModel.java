@@ -1,8 +1,5 @@
 /**
- * Abstract base class for all database entity models in the Hospital Management System.
- * Provides common CRUD (Create, Read, Update, Delete) operations and database interaction functionality.
- * 
- * @param <T> The specific entity type that extends this base class
+ * Base class for database entities.
  */
 package models;
 

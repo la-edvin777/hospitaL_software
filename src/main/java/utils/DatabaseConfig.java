@@ -1,7 +1,5 @@
 /**
- * Configuration class for database connection settings in the Hospital Management System.
- * Provides centralized management of database connection parameters and connection creation.
- * This class follows the Singleton pattern to ensure consistent database configuration.
+ * Database connection configuration.
  */
 package utils;
 
@@ -44,8 +42,7 @@ public class DatabaseConfig {
     }
 
     /**
-     * Private constructor to prevent instantiation.
-     * This class should only be used through its static methods.
+     * Private constructor.
      */
     private DatabaseConfig() {}
 
@@ -107,12 +104,10 @@ public class DatabaseConfig {
     }
 
     /**
-     * Creates and returns a new database connection using the configured settings.
-     * This method should be used for all database operations in the application.
-     * If the database doesn't exist or the user doesn't exist, they will be created.
+     * Get database connection.
      * 
-     * @return A new Connection object to the database
-     * @throws SQLException if a database access error occurs or the URL is null
+     * @return Database connection
+     * @throws SQLException if connection error
      */
     public static Connection getConnection() throws SQLException {
         System.out.println("Attempting to connect to database with application user: " + APP_USERNAME);

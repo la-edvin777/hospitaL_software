@@ -11,8 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Extended Patient model that includes insurance company and main doctor information.
- * This class is used for display purposes in the Patient tab.
+ * Patient model with insurance and doctor info.
  */
 public class PatientExtendedView extends Patient {
     private String insuranceCompany;

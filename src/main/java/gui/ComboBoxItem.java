@@ -1,7 +1,5 @@
 /**
- * Represents an item in a combo box (dropdown) in the Hospital Management System GUI.
- * This class maintains both the actual value and display text for combo box items,
- * particularly useful for displaying human-readable text while maintaining database IDs.
+ * Combo box item with ID and display text.
  */
 package gui;
 

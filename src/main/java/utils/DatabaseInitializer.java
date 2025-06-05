@@ -1,7 +1,5 @@
 /**
- * Utility class for initializing the Hospital Management System database.
- * Handles the creation of database tables, dropping existing tables,
- * and generating sample data for testing and demonstration purposes.
+ * Database initialization for Hospital Management System.
  */
 package utils;
 
@@ -11,25 +9,23 @@ import java.sql.Statement;
 
 public class DatabaseInitializer {
     /**
-     * Initializes the database by dropping existing tables,
-     * creating new tables, and populating them with sample data.
+     * Initialize database with tables and sample data.
      * 
-     * @param conn The database connection
-     * @throws SQLException if there's an error during initialization
+     * @param conn Database connection
+     * @throws SQLException if error during initialization
      */
     public static void initializeDatabase(Connection conn) throws SQLException {
         dropTables(conn);
         createTables(conn);
-        DataGenerator.generateSampleData(conn);
+        // Note: Sample data is now loaded via CSV files through CSVLoader
+        // DataGenerator.generateSampleData(conn); // REMOVED - deprecated
     }
 
     /**
-     * Initializes the database by dropping existing tables and creating new tables,
-     * but does NOT populate them with sample data. This is useful when you want
-     * to load data from CSV files or other sources.
+     * Initialize database with tables only (no sample data).
      * 
-     * @param conn The database connection
-     * @throws SQLException if there's an error during initialization
+     * @param conn Database connection
+     * @throws SQLException if error during initialization
      */
     public static void initializeDatabaseWithoutData(Connection conn) throws SQLException {
         dropTables(conn);
@@ -37,12 +33,10 @@ public class DatabaseInitializer {
     }
 
     /**
-     * Drops all existing tables in the correct order to handle dependencies.
-     * Tables are dropped in reverse order of their dependencies to avoid
-     * foreign key constraint violations.
+     * Drop all tables in correct order.
      * 
-     * @param conn The database connection
-     * @throws SQLException if there's an error dropping the tables
+     * @param conn Database connection
+     * @throws SQLException if error dropping tables
      */
     private static void dropTables(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
@@ -59,11 +53,10 @@ public class DatabaseInitializer {
     }
 
     /**
-     * Creates all database tables with appropriate fields and constraints.
-     * Tables are created in the correct order to satisfy foreign key dependencies.
+     * Create all database tables with constraints.
      * 
-     * @param conn The database connection
-     * @throws SQLException if there's an error creating the tables
+     * @param conn Database connection
+     * @throws SQLException if error creating tables
      */
     private static void createTables(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {

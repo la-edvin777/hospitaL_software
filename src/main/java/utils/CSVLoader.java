@@ -1,7 +1,5 @@
 /**
- * Utility class for loading CSV data into the Hospital Management System database.
- * Handles the bulk import of data from CSV files into corresponding database tables.
- * Supports error handling and provides feedback on the loading process.
+ * Loads CSV data into database tables.
  */
 package utils;
 
@@ -24,20 +22,19 @@ public class CSVLoader {
     private static final SimpleDateFormat SQL_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.UK);
     
     /**
-     * Creates a new CSVLoader with the specified database connection.
-     * Uses the default "data" directory for CSV files.
+     * Creates a new CSVLoader.
      * 
-     * @param connection The database connection to use for loading data
+     * @param connection Database connection
      */
     public CSVLoader(Connection connection) {
         this(connection, "data");  // Default to "data" directory
     }
     
     /**
-     * Creates a new CSVLoader with the specified connection and data directory.
+     * Creates a new CSVLoader.
      * 
-     * @param connection The database connection to use for loading data
-     * @param dataDirectory The directory containing the CSV files
+     * @param connection Database connection
+     * @param dataDirectory Directory containing CSV files
      */
     public CSVLoader(Connection connection, String dataDirectory) {
         this.connection = connection;
@@ -45,9 +42,9 @@ public class CSVLoader {
     }
     
     /**
-     * Loads all data from CSV files into the database.
+     * Loads all CSV data into database.
      * 
-     * @throws SQLException if there's an error loading the data
+     * @throws SQLException if error loading data
      */
     public void loadAllData() throws SQLException {
         System.out.println("DEBUG: loadAllData() called - " + new Exception().getStackTrace()[1]);
@@ -105,14 +102,13 @@ public class CSVLoader {
     }
     
     /**
-     * Loads data from a single CSV file into the specified table.
-     * Performs file existence and permission checks before loading.
+     * Loads data from CSV file into table.
      * 
-     * @param conn The database connection
-     * @param csvFile The path to the CSV file
-     * @param tableName The name of the target database table
-     * @param columns The column specification for the LOAD DATA command
-     * @throws SQLException if there's an error loading the data
+     * @param conn Database connection
+     * @param csvFile CSV file path
+     * @param tableName Target table name
+     * @param columns Column specification
+     * @throws SQLException if error loading data
      */
     private static void loadTable(Connection conn, String csvFile, String tableName, String columns) 
             throws SQLException {
@@ -154,8 +150,8 @@ public class CSVLoader {
                 "(patientid, doctorid, dateofvisit, symptoms, diagnosis) " +
                 "SET visitid = SUBSTRING(MD5(CONCAT(patientid, doctorid, dateofvisit)), 1, 8)",
                 absolutePath, tableName);
-        } else if (tableName.equals("patientinsurance")) {
-            // For patientinsurance table, handle date conversion
+        } else if (tableName.equals("prescription")) {
+            // For prescription table, need to handle date format conversion from DD/MM/YYYY to YYYY-MM-DD
             sql = String.format(
                 "LOAD DATA LOCAL INFILE '%s' " +
                 "INTO TABLE %s " +
@@ -163,9 +159,8 @@ public class CSVLoader {
                 "ENCLOSED BY '\"' " +
                 "LINES TERMINATED BY '\n' " +
                 "IGNORE 1 LINES " +
-                "(insuranceid, patientid, @startdate, @enddate) " +
-                "SET startdate = STR_TO_DATE(@startdate, '%%Y-%%m-%%d'), " +
-                "enddate = STR_TO_DATE(@enddate, '%%Y-%%m-%%d')",
+                "(prescriptionid, @date_var, dosage, duration, comment, drugid, doctorid, patientid) " +
+                "SET dateprescribed = STR_TO_DATE(@date_var, '%%d/%%m/%%Y')",
                 absolutePath, tableName);
         } else {
             // For other tables, use the original format
@@ -188,15 +183,10 @@ public class CSVLoader {
     }
 
     /**
-     * Loads data from a single CSV file into the specified table.
-     * Performs file existence and permission checks before loading.
-     * Uses regular INSERT statements instead of LOAD DATA LOCAL INFILE.
+     * Loads CSV data using INSERT statements.
+     * Fallback when LOAD DATA LOCAL INFILE is disabled.
      * 
-     * @param conn The database connection
-     * @param csvFile The path to the CSV file
-     * @param tableName The name of the target database table
-     * @param columns The column specification for the INSERT command
-     * @throws SQLException if there's an error loading the data
+     * @throws SQLException if error loading data
      */
     private void loadTableWithInsert(Connection conn, String csvFile, String tableName, String columnsSpec) throws SQLException {
         File file = new File(csvFile);
@@ -256,8 +246,8 @@ public class CSVLoader {
             int count = 0;
             int autoId = 1;
             
-            // Date format for parsing MM/DD/YYYY
-            java.text.SimpleDateFormat inputFormat = new java.text.SimpleDateFormat("MM/dd/yyyy");
+            // Date format for parsing DD/MM/YYYY
+            java.text.SimpleDateFormat inputFormat = new java.text.SimpleDateFormat("dd/MM/yyyy");
             java.text.SimpleDateFormat outputFormat = new java.text.SimpleDateFormat("yyyy-MM-dd");
             
             // Also handle YYYY-MM-DD format for PatientInsurance
@@ -288,24 +278,6 @@ public class CSVLoader {
                             try {
                                 // Try ISO format as fallback
                                 java.util.Date parsedDate = isoFormat.parse(value);
-                                value = outputFormat.format(parsedDate);
-                            } catch (java.text.ParseException e2) {
-                                throw new SQLException("Error parsing date: " + value, e2);
-                            }
-                        }
-                    }
-                    
-                    // Handle date conversion for patientinsurance dates
-                    if (tableName.equals("patientinsurance") && 
-                        (columnNames[i].trim().equals("startdate") || columnNames[i].trim().equals("enddate"))) {
-                        try {
-                            // Try ISO format first (YYYY-MM-DD)
-                            java.util.Date parsedDate = isoFormat.parse(value);
-                            value = outputFormat.format(parsedDate);
-                        } catch (java.text.ParseException e) {
-                            try {
-                                // Try MM/DD/YYYY format as fallback
-                                java.util.Date parsedDate = inputFormat.parse(value);
                                 value = outputFormat.format(parsedDate);
                             } catch (java.text.ParseException e2) {
                                 throw new SQLException("Error parsing date: " + value, e2);
@@ -353,7 +325,7 @@ public class CSVLoader {
     }
     
     /**
-     * Parse a CSV line, handling quoted values properly
+     * Parse CSV line, handle quoted values.
      */
     private String[] parseCSVLine(String line) {
         java.util.List<String> result = new java.util.ArrayList<>();
@@ -448,10 +420,9 @@ public class CSVLoader {
     }
     
     /**
-     * Analyzes visit patterns and assigns main doctors to patients based on 
-     * their most frequently visited doctor.
+     * Assigns main doctors based on visit patterns.
      * 
-     * @throws SQLException if there's an error updating the database
+     * @throws SQLException if error updating database
      */
     private void assignMainDoctorsFromVisitPatterns() throws SQLException {
         String analysisQuery = "SELECT p.patientid, " +
@@ -511,10 +482,9 @@ public class CSVLoader {
     }
     
     /**
-     * Generates DoctorSpecialty data based on existing doctors in the database.
-     * Uses the specialization field from the doctor table to create specialty records.
+     * Generates doctor specialty data from existing doctors.
      * 
-     * @throws SQLException if there's an error generating the data
+     * @throws SQLException if error generating data
      */
     private void generateDoctorSpecialtyData() throws SQLException {
         String selectQuery = "SELECT doctorid, specialization FROM doctor WHERE specialization IS NOT NULL AND specialization != ''";
@@ -552,11 +522,10 @@ public class CSVLoader {
     }
     
     /**
-     * Generates PatientInsurance data based on existing patient-insurance relationships.
-     * Creates insurance period records for patients who have insurance.
-     * Realistically, not all patients with insurance IDs have active coverage.
+     * Generates patient insurance data from existing patient-insurance relationships.
+     * Only ~70% get active coverage with varied dates.
      * 
-     * @throws SQLException if there's an error generating the data
+     * @throws SQLException if error generating data
      */
     private void generatePatientInsuranceData() throws SQLException {
         String selectQuery = "SELECT patientid, insuranceid FROM patient WHERE insuranceid IS NOT NULL AND insuranceid != ''";
@@ -621,10 +590,10 @@ public class CSVLoader {
     }
     
     /**
-     * Generates realistic experience years based on specialization.
+     * Generate experience years based on specialty.
      * 
-     * @param specialization The doctor's specialization
-     * @return Years of experience (5-25 years)
+     * @param specialization Doctor's specialization
+     * @return Years of experience (5-25)
      */
     private int generateExperienceYears(String specialization) {
         // Generate experience based on specialty complexity
