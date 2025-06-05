@@ -20,6 +20,22 @@ public class Prescription extends BaseModel<Prescription> {
     
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.UK);
 
+    // Default constructor
+    public Prescription() {}
+
+    // Full constructor
+    public Prescription(String prescriptionid, Date dateprescribed, String dosage, String duration, 
+                       String comment, int drugid, String doctorid, String patientid) {
+        this.prescriptionid = prescriptionid;
+        this.dateprescribed = dateprescribed;
+        this.dosage = dosage;
+        this.duration = duration;
+        this.comment = comment;
+        this.drugid = drugid;
+        this.doctorid = doctorid;
+        this.patientid = patientid;
+    }
+
     @Override
     protected String getTableName() {
         return "prescription";
@@ -91,7 +107,8 @@ public class Prescription extends BaseModel<Prescription> {
     protected String getSelectAllSQL() {
         return "SELECT p.*, CONCAT(d.firstname, ' ', d.surname) AS doctorName " +
                "FROM prescription p " +
-               "LEFT JOIN doctor d ON p.doctorid = d.doctorid";
+               "LEFT JOIN doctor d ON p.doctorid = d.doctorid " +
+               "ORDER BY p.dateprescribed DESC";
     }
 
     @Override
@@ -113,6 +130,11 @@ public class Prescription extends BaseModel<Prescription> {
     
     public Date getDateprescribed() { return dateprescribed; }
     public void setDateprescribed(Date dateprescribed) { this.dateprescribed = dateprescribed; }
+    
+    // Additional setter for java.util.Date compatibility
+    public void setDateprescribed(java.util.Date dateprescribed) { 
+        this.dateprescribed = dateprescribed != null ? new java.sql.Date(dateprescribed.getTime()) : null; 
+    }
     
     public String getDosage() { return dosage; }
     public void setDosage(String dosage) { this.dosage = dosage; }
@@ -147,4 +169,4 @@ public class Prescription extends BaseModel<Prescription> {
     protected Object getId() {
         return prescriptionid;
     }
-} 
+}

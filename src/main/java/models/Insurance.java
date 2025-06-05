@@ -5,33 +5,36 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class Insurance extends BaseModel<Insurance> {
-    private String insuranceID;
+    private String insuranceid;
     private String company;
     private String address;
     private String phone;
 
+    // Default constructor
+    public Insurance() {}
+
     // Constructor
-    public Insurance(String insuranceID, String company, String address, String phone) {
-        this.insuranceID = insuranceID;
+    public Insurance(String insuranceid, String company, String address, String phone) {
+        this.insuranceid = insuranceid;
         this.company = company;
         this.address = address;
         this.phone = phone;
     }
 
-    // Default constructor
-    public Insurance() {}
-
     // Getters and Setters
-    public String getInsuranceID() { return insuranceID; }
-    public void setInsuranceID(String insuranceID) { this.insuranceID = insuranceID; }
+    public String getInsuranceid() { return insuranceid; }
+    public void setInsuranceid(String insuranceid) { this.insuranceid = insuranceid; }
     
-    // Add lowercase version for compatibility with UI
-    public String getInsuranceid() { return insuranceID; }
+    // Legacy getter for compatibility
+    public String getInsuranceID() { return insuranceid; }
+    public void setInsuranceID(String insuranceID) { this.insuranceid = insuranceID; }
     
     public String getCompany() { return company; }
     public void setCompany(String company) { this.company = company; }
+    
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 
@@ -52,7 +55,7 @@ public class Insurance extends BaseModel<Insurance> {
 
     @Override
     protected void setCreateStatement(PreparedStatement stmt, Insurance entity) throws SQLException {
-        stmt.setString(1, entity.getInsuranceID());
+        stmt.setString(1, entity.getInsuranceid());
         stmt.setString(2, entity.getCompany());
         stmt.setString(3, entity.getAddress());
         stmt.setString(4, entity.getPhone());
@@ -63,7 +66,7 @@ public class Insurance extends BaseModel<Insurance> {
         stmt.setString(1, entity.getCompany());
         stmt.setString(2, entity.getAddress());
         stmt.setString(3, entity.getPhone());
-        stmt.setString(4, entity.getInsuranceID());
+        stmt.setString(4, entity.getInsuranceid());
     }
 
     @Override
@@ -83,7 +86,7 @@ public class Insurance extends BaseModel<Insurance> {
 
     @Override
     protected String getSelectAllSQL() {
-        return "SELECT * FROM insurance";
+        return "SELECT * FROM insurance ORDER BY company";
     }
 
     @Override
@@ -99,11 +102,11 @@ public class Insurance extends BaseModel<Insurance> {
     @Override
     public String toString() {
         return String.format("Insurance[ID=%s, Company=%s, Phone=%s]", 
-            insuranceID, company, phone);
+            insuranceid, company, phone);
     }
 
     @Override
     protected Object getId() {
-        return insuranceID;
+        return insuranceid;
     }
-} 
+}

@@ -7,33 +7,37 @@ package gui;
 
 public class ComboBoxItem {
     /** The actual value (usually a database ID) */
-    private final String value;
+    private final String id;
     
     /** The text to display in the combo box */
     private final String display;
 
     /**
-     * Creates a new combo box item with the specified value and display text.
+     * Creates a new combo box item with the specified ID and display text.
      * 
-     * @param value The actual value to be used internally (e.g., database ID)
+     * @param id The actual value to be used internally (e.g., database ID)
      * @param display The text to display to the user
      */
-    public ComboBoxItem(String value, String display) {
-        this.value = value;
-        this.display = display;
+    public ComboBoxItem(String id, String display) {
+        this.id = id != null ? id : "";
+        this.display = display != null ? display : "";
     }
 
     /**
-     * Gets the actual value of the item.
-     * @return The internal value (e.g., database ID)
+     * Gets the actual ID of the item.
+     * @return The internal ID (e.g., database ID)
      */
-    public String getValue() { return value; }
+    public String getId() { 
+        return id; 
+    }
 
     /**
      * Gets the display text of the item.
      * @return The text to show in the combo box
      */
-    public String getDisplay() { return display; }
+    public String getDisplay() { 
+        return display; 
+    }
 
     /**
      * Returns the display text when the object needs to be converted to a string.
@@ -45,4 +49,31 @@ public class ComboBoxItem {
     public String toString() {
         return display;
     }
-} 
+
+    /**
+     * Checks if this item represents an empty/null selection.
+     * @return true if the ID is null or empty
+     */
+    public boolean isEmpty() {
+        return id == null || id.trim().isEmpty();
+    }
+
+    /**
+     * Equals method for proper comparison
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        ComboBoxItem that = (ComboBoxItem) obj;
+        return id.equals(that.id);
+    }
+
+    /**
+     * Hash code for proper hashing
+     */
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+}

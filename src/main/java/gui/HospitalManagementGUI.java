@@ -1,31 +1,24 @@
 package gui;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.JTable;
 import javax.swing.SwingUtilities;
-import javax.swing.table.DefaultTableModel;
 
 import models.Doctor;
 import models.DoctorSpecialty;
 import models.Insurance;
-import models.PatientExtendedView;
+import models.Patient;
 import models.PatientInsurance;
 import models.Prescription;
 import models.Visit;
@@ -52,7 +45,7 @@ public class HospitalManagementGUI extends JFrame {
             csvLoader = new CSVLoader(connection);
             
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setSize(800, 600);
+            setSize(1000, 700);
             
             // Create menu bar
             setupMenuBar();
@@ -115,12 +108,12 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupDoctorPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("doctorid", new FieldMetadata(String.class, true));
-        fields.put("firstname", new FieldMetadata(String.class));
-        fields.put("surname", new FieldMetadata(String.class));
-        fields.put("specialization", new FieldMetadata(String.class));
-        fields.put("address", new FieldMetadata(String.class));
-        fields.put("email", new FieldMetadata(String.class));
+        fields.put("doctorid", new FieldMetadata(String.class, true, null, null, null, true, 8));
+        fields.put("firstname", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("surname", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("specialization", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("address", new FieldMetadata(String.class, false, null, null, null, true, 200));
+        fields.put("email", new FieldMetadata(String.class, false, null, null, null, true, 100));
         
         DatabaseTablePanel<Doctor> panel = new DatabaseTablePanel<>(
             connection,
@@ -135,99 +128,36 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupPatientPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("patientid", new FieldMetadata(String.class, true));
-        fields.put("firstname", new FieldMetadata(String.class));
-        fields.put("surname", new FieldMetadata(String.class));
-        fields.put("phone", new FieldMetadata(String.class));
-        fields.put("email", new FieldMetadata(String.class));
-        fields.put("address", new FieldMetadata(String.class));
-        fields.put("postcode", new FieldMetadata(String.class));
-        fields.put("insuranceCompany", new FieldMetadata(String.class));
-        fields.put("mainDoctorName", new FieldMetadata(String.class));
+        fields.put("patientid", new FieldMetadata(String.class, true, null, null, null, true, 8));
+        fields.put("firstname", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("surname", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("phone", new FieldMetadata(String.class, false, null, null, null, true, 20));
+        fields.put("email", new FieldMetadata(String.class, false, null, null, null, true, 100));
+        fields.put("address", new FieldMetadata(String.class, false, null, null, null, true, 200));
+        fields.put("postcode", new FieldMetadata(String.class, false, null, null, null, true, 10));
+        fields.put("insuranceid", new FieldMetadata(String.class, "insurance", "insuranceid", "company"));
         
-        JPanel patientPanel = new JPanel(new BorderLayout());
+        DatabaseTablePanel<Patient> panel = new DatabaseTablePanel<>(
+            connection,
+            new Patient(),
+            "patient",
+            fields,
+            Patient::new
+        );
         
-        try {
-            List<PatientExtendedView> patients = PatientExtendedView.getAllWithExtendedInfo(connection);
-            
-            DefaultTableModel tableModel = new DefaultTableModel();
-            
-            String[] columnNames = {"Patient ID", "First Name", "Last Name", "Phone", "Email", 
-                                   "Address", "Postcode", "Insurance Company", "Main Doctor"};
-            for (String columnName : columnNames) {
-                tableModel.addColumn(columnName);
-            }
-            
-            for (PatientExtendedView patient : patients) {
-                tableModel.addRow(new Object[]{
-                    patient.getPatientid(),
-                    patient.getFirstname(),
-                    patient.getSurname(),
-                    patient.getPhone(),
-                    patient.getEmail(),
-                    patient.getAddress(),
-                    patient.getPostcode(),
-                    patient.getInsuranceCompany(),
-                    patient.getMainDoctorName()
-                });
-            }
-            
-            JTable table = new JTable(tableModel);
-            JScrollPane scrollPane = new JScrollPane(table);
-            patientPanel.add(scrollPane, BorderLayout.CENTER);
-            
-            JButton refreshButton = new JButton("Refresh");
-            refreshButton.addActionListener(e -> {
-                try {
-                    List<PatientExtendedView> refreshedPatients = PatientExtendedView.getAllWithExtendedInfo(connection);
-                    DefaultTableModel model = (DefaultTableModel) table.getModel();
-                    model.setRowCount(0);
-                    
-                    for (PatientExtendedView patient : refreshedPatients) {
-                        model.addRow(new Object[]{
-                            patient.getPatientid(),
-                            patient.getFirstname(),
-                            patient.getSurname(),
-                            patient.getPhone(),
-                            patient.getEmail(),
-                            patient.getAddress(),
-                            patient.getPostcode(),
-                            patient.getInsuranceCompany(),
-                            patient.getMainDoctorName()
-                        });
-                    }
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(this, 
-                        "Unable to refresh the patient information. Please try again later.",
-                        "Data Refresh Error", 
-                        JOptionPane.ERROR_MESSAGE);
-                }
-            });
-            
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.add(refreshButton);
-            patientPanel.add(buttonPanel, BorderLayout.SOUTH);
-            
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, 
-                "Unable to load patient information. The patient tab will be unavailable.",
-                "Data Loading Error", 
-                JOptionPane.ERROR_MESSAGE);
-            patientPanel = new JPanel();
-        }
-        
-        tabbedPane.addTab("Patients", patientPanel);
+        tabbedPane.addTab("Patients", panel);
     }
     
     private void setupVisitPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("patientid", new FieldMetadata(String.class, true));
-        fields.put("doctorid", new FieldMetadata(String.class, "doctor", "doctorid", "firstname || ' ' || surname"));
-        fields.put("dateofvisit", new FieldMetadata(Date.class));
-        fields.put("symptoms", new FieldMetadata(String.class));
-        fields.put("diagnosis", new FieldMetadata(String.class));
+        fields.put("visitid", new FieldMetadata(String.class, true, null, null, null, true, 8));
+        fields.put("patientid", new FieldMetadata(String.class, "patient", "patientid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("patientName", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
+        fields.put("doctorid", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("doctorName", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
+        fields.put("dateofvisit", new FieldMetadata(Date.class, false, null, null, null, true, 0));
+        fields.put("symptoms", new FieldMetadata(String.class, false, null, null, null, false, 200));
+        fields.put("diagnosis", new FieldMetadata(String.class, false, null, null, null, true, 100));
         
         DatabaseTablePanel<Visit> panel = new DatabaseTablePanel<>(
             connection,
@@ -242,15 +172,14 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupPrescriptionPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("prescriptionid", new FieldMetadata(String.class, true));
+        fields.put("prescriptionid", new FieldMetadata(String.class, true, null, null, null, true, 10));
         fields.put("patientid", new FieldMetadata(String.class, "patient", "patientid", "CONCAT(firstname, ' ', surname)"));
         fields.put("doctorid", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
-        fields.put("doctorName", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
         fields.put("drugid", new FieldMetadata(Integer.class, "drug", "drugid", "name"));
-        fields.put("dateprescribed", new FieldMetadata(Date.class));
-        fields.put("dosage", new FieldMetadata(String.class));
-        fields.put("duration", new FieldMetadata(String.class));
-        fields.put("comment", new FieldMetadata(String.class));
+        fields.put("dateprescribed", new FieldMetadata(Date.class, false, null, null, null, true, 0));
+        fields.put("dosage", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("duration", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("comment", new FieldMetadata(String.class, false, null, null, null, false, 200));
         
         DatabaseTablePanel<Prescription> panel = new DatabaseTablePanel<>(
             connection,
@@ -265,9 +194,9 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupDoctorSpecialtyPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("doctorid", new FieldMetadata(String.class, "doctor", "doctorid", "firstname || ' ' || surname"));
-        fields.put("specialty", new FieldMetadata(String.class));
-        fields.put("experience", new FieldMetadata(Integer.class));
+        fields.put("doctorid", new FieldMetadata(String.class, true, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("specialty", new FieldMetadata(String.class, false, null, null, null, true, 50));
+        fields.put("experience", new FieldMetadata(Integer.class, false, null, null, null, true, 0));
         
         DatabaseTablePanel<DoctorSpecialty> panel = new DatabaseTablePanel<>(
             connection,
@@ -281,10 +210,10 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupPatientInsurancePanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("insuranceid", new FieldMetadata(String.class, true));
-        fields.put("patientid", new FieldMetadata(String.class, "patient", "patientid", "firstname || ' ' || surname"));
-        fields.put("startdate", new FieldMetadata(Date.class));
-        fields.put("enddate", new FieldMetadata(Date.class));
+        fields.put("insuranceid", new FieldMetadata(String.class, true, "insurance", "insuranceid", "company"));
+        fields.put("patientid", new FieldMetadata(String.class, false, "patient", "patientid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("startdate", new FieldMetadata(Date.class, false, null, null, null, true, 0));
+        fields.put("enddate", new FieldMetadata(Date.class, false, null, null, null, true, 0));
         
         DatabaseTablePanel<PatientInsurance> panel = new DatabaseTablePanel<>(
             connection,
@@ -299,10 +228,10 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupInsurancePanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("insuranceid", new FieldMetadata(String.class, true));
-        fields.put("company", new FieldMetadata(String.class, true));  // Company is required
-        fields.put("address", new FieldMetadata(String.class, true));  // Address is required
-        fields.put("phone", new FieldMetadata(String.class, true));    // Phone is required
+        fields.put("insuranceid", new FieldMetadata(String.class, true, null, null, null, true, 8));
+        fields.put("company", new FieldMetadata(String.class, false, null, null, null, true, 100));
+        fields.put("address", new FieldMetadata(String.class, false, null, null, null, true, 200));
+        fields.put("phone", new FieldMetadata(String.class, false, null, null, null, true, 20));
         
         DatabaseTablePanel<Insurance> panel = new DatabaseTablePanel<>(
             connection,
@@ -395,4 +324,4 @@ public class HospitalManagementGUI extends JFrame {
             }
         });
     }
-} 
+}
