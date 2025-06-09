@@ -59,7 +59,22 @@ public class FieldMetadata {
      * @param displayColumn The field to display in dropdowns/selections
      */
     public FieldMetadata(Class<?> type, String foreignKeyTable, String foreignKeyColumn, String displayColumn) {
-        this(type, false, foreignKeyTable, foreignKeyColumn, displayColumn);
+        // Foreign keys are always required unless explicitly marked as optional
+        this(type, false, foreignKeyTable, foreignKeyColumn, displayColumn, true, 0);
+    }
+    
+    /**
+     * Creates a new field metadata instance for a field that references another table with optional parameters.
+     * 
+     * @param type The Java type of the field
+     * @param foreignKeyTable The name of the referenced table
+     * @param foreignKeyColumn The primary key field in the referenced table
+     * @param displayColumn The field to display in dropdowns/selections
+     * @param isRequired Whether the field is required
+     * @param maxLength Maximum length for the field (0 for no limit)
+     */
+    public FieldMetadata(Class<?> type, String foreignKeyTable, String foreignKeyColumn, String displayColumn, boolean isRequired, int maxLength) {
+        this(type, false, foreignKeyTable, foreignKeyColumn, displayColumn, isRequired, maxLength);
     }
     
     /**
@@ -73,13 +88,8 @@ public class FieldMetadata {
      * @param displayColumn The field to display in dropdowns/selections
      */
     public FieldMetadata(Class<?> type, boolean isPrimaryKey, String foreignKeyTable, String foreignKeyColumn, String displayColumn) {
-        this.type = type;
-        this.isPrimaryKey = isPrimaryKey;
-        this.foreignKeyTable = foreignKeyTable;
-        this.foreignKeyColumn = foreignKeyColumn;
-        this.displayColumn = displayColumn;
-        this.isRequired = isPrimaryKey;
-        this.maxLength = 0; // Default no limit
+        // Foreign keys are always required unless explicitly marked as optional
+        this(type, isPrimaryKey, foreignKeyTable, foreignKeyColumn, displayColumn, true, 0);
     }
     
     /**
@@ -278,11 +288,19 @@ public class FieldMetadata {
     public String getValueFromComponent(JComponent component) {
         if (type == Date.class || type == java.sql.Date.class) {
             if (component instanceof DatePicker) {
-                return ((DatePicker) component).getDateString();
+                String dateStr = ((DatePicker) component).getDateString();
+                if ((isRequired || hasRelation()) && (dateStr == null || dateStr.trim().isEmpty())) {
+                    return null;
+                }
+                return dateStr;
             }
         } else if (component instanceof JTextField) {
             String text = ((JTextField) component).getText();
-            return text != null && !text.trim().isEmpty() ? text.trim() : null;
+            if (text == null || text.trim().isEmpty()) {
+                // Return null for required fields or foreign keys, empty string for optional fields
+                return (isRequired || hasRelation()) ? null : "";
+            }
+            return text.trim();
         }
         return null;
     }
@@ -310,14 +328,24 @@ public class FieldMetadata {
      * @return A validation result with success status and error message
      */
     public ValidationResult validateValue(String value) {
-        // Check required fields
-        if (isRequired && (value == null || value.trim().isEmpty())) {
-            return new ValidationResult(false, "This field is required");
+        // Check required fields and foreign key constraints
+        if (isRequired || hasRelation()) {
+            if (value == null || value.trim().isEmpty()) {
+                String fieldType = hasRelation() ? 
+                    "Foreign key reference to " + foreignKeyTable : 
+                    "This field";
+                return new ValidationResult(false, fieldType + " is required");
+            }
         }
         
-        // Allow empty non-required fields
-        if (value == null || value.trim().isEmpty()) {
+        // Allow empty non-required fields (except foreign keys)
+        if (!isRequired && !hasRelation() && (value == null || value.trim().isEmpty())) {
             return new ValidationResult(true, null);
+        }
+        
+        // If we get here and value is null, it's an error
+        if (value == null) {
+            return new ValidationResult(false, "Invalid value provided");
         }
         
         value = value.trim();
@@ -349,6 +377,35 @@ public class FieldMetadata {
         }
         
         return new ValidationResult(true, null);
+    }
+    
+    /**
+     * Validates if a foreign key value exists in the referenced table.
+     * 
+     * @param conn Database connection
+     * @param value The foreign key value to validate
+     * @return true if the value exists in the referenced table
+     */
+    public boolean validateForeignKeyValue(Connection conn, String value) {
+        if (!hasRelation() || value == null || value.trim().isEmpty()) {
+            return false;
+        }
+
+        String sql = String.format("SELECT COUNT(*) FROM %s WHERE %s = ?", 
+            foreignKeyTable, foreignKeyColumn);
+            
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, value.trim());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return false;
     }
     
     /**

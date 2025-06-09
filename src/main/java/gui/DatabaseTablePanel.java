@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -318,20 +319,41 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
             case "doctor":
                 return new String[]{"doctorid", "firstname", "surname", "specialization", "address", "email"};
             case "patient":
-                return new String[]{"patientid", "firstname", "surname", "phone", "email", "address", "postcode", "insurancecompany", "maindoctorname"};
+                return new String[]{"patientid", "firstname", "surname", "phone", "email", "address", "postcode", 
+                    "insuranceid", "insurancecompany", "maindoctorid", "maindoctorname"};
             case "visit":
-                return new String[]{"visitid", "patientName", "doctorName", "dateofvisit", "symptoms", "diagnosis"};
+                return new String[]{"visitid", "patientid", "patientname", "doctorid", "doctorname", 
+                    "dateofvisit", "symptoms", "diagnosis"};
             case "prescription":
-                return new String[]{"prescriptionid", "patientname", "doctorname", "drugname", "dateprescribed", "dosage", "duration", "comment"};
+                return new String[]{"prescriptionid", "patientid", "patientname", "doctorid", "doctorname", 
+                    "drugid", "drugname", "dateprescribed", "dosage", "duration", "comment"};
             case "doctorspecialty":
-                return new String[]{"doctorname", "specialty", "experience"};
+                return new String[]{"doctorid", "doctorname", "specialty", "experience"};
             case "patientinsurance":
-                return new String[]{"insurancecompany", "patientname", "startdate", "enddate"};
+                return new String[]{"insuranceid", "insurancecompany", "patientid", "patientname", 
+                    "startdate", "enddate"};
             case "insurance":
                 return new String[]{"insuranceid", "company", "address", "phone"};
             default:
                 return fields.keySet().toArray(new String[0]);
         }
+    }
+
+    /**
+     * Get display name for a column.
+     * Makes the column headers more readable.
+     */
+    private String getColumnDisplayName(String columnName) {
+        // Convert camelCase to Title Case with Spaces
+        String displayName = columnName.replaceAll("([a-z])([A-Z])", "$1 $2");
+        displayName = displayName.substring(0, 1).toUpperCase() + displayName.substring(1);
+        
+        // Special handling for ID fields
+        if (displayName.toLowerCase().endsWith("id")) {
+            displayName = displayName.substring(0, displayName.length() - 2) + " ID";
+        }
+        
+        return displayName;
     }
 
     private void setDefaultSorting() {
@@ -415,14 +437,15 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
                 }
             } else if (metadata.getType() == Date.class || metadata.getType() == java.sql.Date.class) {
                 // Create date picker for date input
-                DatePicker datePicker = new DatePicker();
+                input = new DatePicker();
                 if (!isNew && entity != null) {
                     Object value = getFieldValue(entity, fieldName);
                     if (value instanceof Date) {
-                        datePicker.setSelectedDate((Date) value);
+                        ((DatePicker) input).setSelectedDate((Date) value);
+                    } else if (value instanceof String) {
+                        ((DatePicker) input).setDateString((String) value);
                     }
                 }
-                input = datePicker;
             } else {
                 // Create text field for other fields
                 JTextField textField = new JTextField(20);
@@ -592,7 +615,11 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
             ComboBoxItem selected = (ComboBoxItem) ((JComboBox<?>) input).getSelectedItem();
             return selected != null ? selected.getId() : null;
         } else if (input instanceof DatePicker) {
-            return ((DatePicker) input).getDateString();
+            Date date = ((DatePicker) input).getSelectedDate();
+            if (date != null) {
+                return DATE_FORMAT.format(date);
+            }
+            return null;
         }
         return null;
     }
@@ -772,47 +799,39 @@ public class DatabaseTablePanel<T extends BaseModel<T>> extends JPanel {
     /**
      * Set field value using reflection with type conversion
      */
-    private void setFieldValue(T entity, String fieldName, Object value, Class<?> targetType) throws Exception {
-        String setterName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-        
-        if (value == null || (value instanceof String && ((String) value).isEmpty())) {
-            // Handle null/empty values
-            for (Method method : entity.getClass().getMethods()) {
-                if (method.getName().equals(setterName) && method.getParameterCount() == 1) {
-                    method.invoke(entity, (Object) null);
-                    return;
-                }
-            }
-        } else if (targetType == Date.class || targetType == java.sql.Date.class) {
-            // Handle date conversion
-            if (value instanceof String) {
-                try {
-                    java.util.Date parsedDate = DATE_FORMAT.parse((String) value);
-                    java.sql.Date sqlDate = new java.sql.Date(parsedDate.getTime());
-                    Method setter = entity.getClass().getMethod(setterName, java.sql.Date.class);
-                    setter.invoke(entity, sqlDate);
-                } catch (Exception e) {
-                    throw new IllegalArgumentException("Invalid date format. Use YYYY-MM-DD");
-                }
-            }
-        } else if (targetType == Integer.class || targetType == int.class) {
-            // Handle integer conversion
-            if (value instanceof String) {
-                try {
-                    int intValue = Integer.parseInt((String) value);
-                    Method setter = entity.getClass().getMethod(setterName, int.class);
-                    setter.invoke(entity, intValue);
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Must be a valid number");
-                }
-            } else if (value instanceof Integer) {
-                Method setter = entity.getClass().getMethod(setterName, int.class);
-                setter.invoke(entity, value);
-            }
-        } else {
-            // Handle string and other types
-            Method setter = entity.getClass().getMethod(setterName, targetType);
-            setter.invoke(entity, value);
+    private void setFieldValue(T entity, String fieldName, Object value, Class<?> type) throws Exception {
+        if (value == null) {
+            return;
         }
+
+        String setterName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        Method setter = null;
+
+        if (type == Date.class || type == java.sql.Date.class) {
+            if (value instanceof String) {
+                try {
+                    Date date = DATE_FORMAT.parse((String) value);
+                    setter = entity.getClass().getMethod(setterName, java.util.Date.class);
+                    setter.invoke(entity, date);
+                    return;
+                } catch (ParseException e) {
+                    throw new Exception("Invalid date format for " + fieldName);
+                }
+            } else if (value instanceof Date) {
+                setter = entity.getClass().getMethod(setterName, java.util.Date.class);
+                setter.invoke(entity, value);
+                return;
+            }
+        } else if (type == Integer.class || type == int.class) {
+            if (value instanceof String) {
+                setter = entity.getClass().getMethod(setterName, type);
+                setter.invoke(entity, Integer.parseInt((String) value));
+                return;
+            }
+        }
+
+        // Default handling for other types
+        setter = entity.getClass().getMethod(setterName, type);
+        setter.invoke(entity, value);
     }
 }

@@ -135,9 +135,9 @@ public class HospitalManagementGUI extends JFrame {
         fields.put("email", new FieldMetadata(String.class, false, null, null, null, true, 100));
         fields.put("address", new FieldMetadata(String.class, false, null, null, null, true, 200));
         fields.put("postcode", new FieldMetadata(String.class, false, null, null, null, true, 10));
-        fields.put("insuranceid", new FieldMetadata(String.class, "insurance", "insuranceid", "company"));
+        fields.put("insuranceid", new FieldMetadata(String.class, false, "insurance", "insuranceid", "company", false, 0));
         fields.put("insurancecompany", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
-        fields.put("maindoctorid", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("maindoctorid", new FieldMetadata(String.class, false, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)", false, 0));
         fields.put("maindoctorname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
         
         DatabaseTablePanel<Patient> panel = new DatabaseTablePanel<>(
@@ -154,10 +154,10 @@ public class HospitalManagementGUI extends JFrame {
     private void setupVisitPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
         fields.put("visitid", new FieldMetadata(String.class, true, null, null, null, true, 8));
-        fields.put("patientid", new FieldMetadata(String.class, "patient", "patientid", "CONCAT(firstname, ' ', surname)"));
-        fields.put("patientName", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
-        fields.put("doctorid", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
-        fields.put("doctorName", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
+        fields.put("patientid", new FieldMetadata(String.class, false, "patient", "patientid", "CONCAT(firstname, ' ', surname)", true, 0));
+        fields.put("patientname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
+        fields.put("doctorid", new FieldMetadata(String.class, false, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)", true, 0));
+        fields.put("doctorname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
         fields.put("dateofvisit", new FieldMetadata(Date.class, false, null, null, null, true, 0));
         fields.put("symptoms", new FieldMetadata(String.class, false, null, null, null, false, 200));
         fields.put("diagnosis", new FieldMetadata(String.class, false, null, null, null, true, 100));
@@ -176,11 +176,11 @@ public class HospitalManagementGUI extends JFrame {
     private void setupPrescriptionPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
         fields.put("prescriptionid", new FieldMetadata(String.class, true, null, null, null, true, 10));
-        fields.put("patientid", new FieldMetadata(String.class, "patient", "patientid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("patientid", new FieldMetadata(String.class, false, "patient", "patientid", "CONCAT(firstname, ' ', surname)", true, 0));
         fields.put("patientname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
-        fields.put("doctorid", new FieldMetadata(String.class, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("doctorid", new FieldMetadata(String.class, false, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)", true, 0));
         fields.put("doctorname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
-        fields.put("drugid", new FieldMetadata(Integer.class, "drug", "drugid", "name"));
+        fields.put("drugid", new FieldMetadata(Integer.class, false, "drug", "drugid", "name", true, 0));
         fields.put("drugname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
         fields.put("dateprescribed", new FieldMetadata(Date.class, false, null, null, null, true, 0));
         fields.put("dosage", new FieldMetadata(String.class, false, null, null, null, true, 50));
@@ -200,7 +200,7 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupDoctorSpecialtyPanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("doctorid", new FieldMetadata(String.class, true, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("doctorid", new FieldMetadata(String.class, true, "doctor", "doctorid", "CONCAT(firstname, ' ', surname)", true, 0));
         fields.put("doctorname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
         fields.put("specialty", new FieldMetadata(String.class, false, null, null, null, true, 50));
         fields.put("experience", new FieldMetadata(Integer.class, false, null, null, null, true, 0));
@@ -217,9 +217,9 @@ public class HospitalManagementGUI extends JFrame {
     
     private void setupPatientInsurancePanel() {
         Map<String, FieldMetadata> fields = new HashMap<>();
-        fields.put("insuranceid", new FieldMetadata(String.class, true, "insurance", "insuranceid", "company"));
+        fields.put("insuranceid", new FieldMetadata(String.class, false, "insurance", "insuranceid", "company", true, 0));
         fields.put("insurancecompany", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
-        fields.put("patientid", new FieldMetadata(String.class, false, "patient", "patientid", "CONCAT(firstname, ' ', surname)"));
+        fields.put("patientid", new FieldMetadata(String.class, false, "patient", "patientid", "CONCAT(firstname, ' ', surname)", true, 0));
         fields.put("patientname", new FieldMetadata(String.class, false, null, null, null, false, 0)); // Display only
         fields.put("startdate", new FieldMetadata(Date.class, false, null, null, null, true, 0));
         fields.put("enddate", new FieldMetadata(Date.class, false, null, null, null, true, 0));
